@@ -1,48 +1,77 @@
-import datetime, gtts, bs4, random, speech_recognition
+import datetime
+import random
+from gtts import gTTS
+import speech_recognition as sr
 
 def what_time_is_it(lang, filename):
-    '''
-    Tell me what time it is.
-    
-    Parameters:
-    lang (str) - language in which to speak
-    filename (str) - the filename into which the audio should be recorded
-    '''
-    raise RuntimeError("You need to write this part!")
-    
+    now = datetime.datetime.now()
+    if lang.startswith('en'):
+        text = f"The time is {now.strftime('%I:%M %p')}."
+    elif lang.startswith('ja'):
+        text = f"現在の時刻は {now.strftime('%H時%M分')} です。"
+    else:
+        text = f"The current time is {now.strftime('%H:%M')}."
+
+    tts = gTTS(text=text, lang=lang)
+    tts.save(filename)
+
 def tell_me_a_joke(lang, audiofile):
-    '''
-    Tell me a joke.
-    
-    @params:
-    filename (str) - filename containing the database of jokes
-    lang (str) - language
-    audiofile (str) - audiofile in which to record the joke
-    '''
-    raise RuntimeError("You need to write this part!")
+    jokes = {
+        'en': [
+            "Why don't scientists trust atoms? Because they make up everything!",
+            "What did the ocean say to the beach? Nothing, it just waved."
+        ],
+        'ja': [
+            "コンピューターが疲れた理由は？ウィンドウズが多すぎたから。",
+            "お寿司屋さんが嫌いな数学の授業は？さしすせそ。"
+        ]
+    }
+    selected_joke = random.choice(jokes.get(lang[:2], ["I don't know any jokes in that language."]))
+    tts = gTTS(text=selected_joke, lang=lang)
+    tts.save(audiofile)
 
 def what_day_is_it(lang, audiofile):
-    '''
-    Tell me what day it is.
+    today = datetime.datetime.today()
+    if lang.startswith('en'):
+        text = f"Today is {today.strftime('%A, %B %d, %Y')}."
+    elif lang.startswith('ja'):
+        weekdays = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日']
+        day_text = weekdays[today.weekday()]
+        text = f"今日は {today.year}年{today.month}月{today.day}日、{day_text}です。"
+    else:
+        text = today.strftime('%Y-%m-%d')
 
-    @params:
-    lang (str) - language in which to record the date
-    audiofile (str) - filename in which to read the date
-    
-    @returns:
-    url (str) - URL that you can look up in order to see the calendar for this month and year
-    '''
-    raise RuntimeError("You need to write this part!")
+    tts = gTTS(text=text, lang=lang)
+    tts.save(audiofile)
+
+    # Return a URL for a calendar view
+    return f"https://www.timeanddate.com/calendar/?year={today.year}&month={today.month}"
 
 def personal_assistant(lang, filename):
-    '''
-    Listen to the user, and respond to one of three types of requests:
-    What time is it?
-    What day is it?
-    Tell me a joke!
-    
-    @params:
-    lang (str) - language
-    filename (str) - filename in which to store the result
-    '''
-    raise RuntimeError("You need to write this part!")
+    r = sr.Recognizer()
+    mic = sr.Microphone()
+    print("Please speak a command...")
+
+    with mic as source:
+        r.adjust_for_ambient_noise(source)
+        audio = r.listen(source)
+
+    try:
+        command = r.recognize_google(audio, language=lang)
+        command = command.lower()
+        print("You said:", command)
+
+        if "time" in command or ("時刻" in command):
+            what_time_is_it(lang, filename)
+        elif "day" in command or ("日" in command):
+            what_day_is_it(lang, filename)
+        elif "joke" in command or ("ジョーク" in command):
+            tell_me_a_joke(lang, filename)
+        else:
+            tts = gTTS(text="Sorry, I did not understand that.", lang=lang)
+            tts.save(filename)
+
+    except Exception as e:
+        print("Error:", e)
+        tts = gTTS(text="I couldn't understand. Please try again.", lang=lang)
+        tts.save(filename)
